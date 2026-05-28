@@ -1,0 +1,11 @@
+numpy>=1.26
+h5py>=3.10
+scikit-learn>=1.4
+mlx>=0.20; platform_machine == "arm64" and sys_platform == "darwin"
+torch>=2.3
+tqdm>=4.66
+matplotlib>=3.8
+pandas>=2.2
+jupyter>=1.0
+# kagglehub 1.0.1 can import a mismatched kagglesdk on some Python 3.14 envs.
+kagglehub>=0.3,<1.0
