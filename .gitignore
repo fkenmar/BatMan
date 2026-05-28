@@ -13,5 +13,6 @@ data*/
 *.npy
 *.npz
 *.csv
+*.pdf
 .ipynb_checkpoints/
 .DS_Store

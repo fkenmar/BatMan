@@ -297,3 +297,32 @@ Each run writes:
 - `per_snr_accuracy.csv`: test accuracy by SNR
 - `confusion_matrix.npy`: full test confusion matrix
 - `split.npz`: reproducible train/validation/test indices
+
+## Citations
+
+This project is motivated by RadioML 2018.01A AMC work, low-SNR reporting gaps,
+frequency-domain AMC methods, and complex-valued neural networks.
+
+- T. J. O'Shea, T. Roy, and T. C. Clancy, "Over-the-Air Deep Learning Based
+  Radio Signal Classification," IEEE Journal of Selected Topics in Signal
+  Processing, 2018. DOI: `10.1109/JSTSP.2018.2797022`.
+- S. Harper, M. Thornton, and E. Larson, "A Reproducible Analysis of Deep
+  Learning-Based Automatic Modulation Classification," Electronics, 2023.
+  DOI: `10.3390/electronics12183962`.
+- R. Zhou et al., "TLDNN: A Transformer-LSTM Based Deep Neural Network for
+  Automatic Modulation Classification," IEEE Transactions on Vehicular
+  Technology, 2025. DOI: `10.1109/TVT.2024.3486079`.
+- J. Zhang et al., "Multi-Spectral Attention for Automatic Modulation
+  Classification," Pattern Recognition, 2023. DOI:
+  `10.1016/j.patcog.2023.109345`.
+- J. Hou et al., "Multi-Domain-Fusion Deep Learning for Automatic Modulation
+  Recognition," Scientific Reports, 2023.
+- C. Trabelsi et al., "Deep Complex Networks," ICLR, 2018. arXiv:
+  `1705.09792`.
+- Z. Tu, Y. Lin, C. Hou, and S. Mao, "Complex-Valued Networks for Automatic
+  Modulation Classification," IEEE Transactions on Vehicular Technology, 2020.
+  DOI: `10.1109/TVT.2020.3005707`.
+- A. Bassey, L. Qian, and X. Li, "A Survey of Complex-Valued Neural Networks,"
+  arXiv, 2021. arXiv: `2101.12249`.
+- Apple, "MLX: An Array Framework for Apple Silicon." Project documentation:
+  `https://ml-explore.github.io/mlx/`.
