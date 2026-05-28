@@ -75,16 +75,61 @@ def read_score(metrics_path: Path) -> tuple[float, float, int]:
     )
 
 
+def completed_epochs_for_trial(output_dir: Path, trial: dict[str, Any]) -> int:
+    metrics_path = metrics_path_for_trial(output_dir, trial)
+    if metrics_path is None:
+        return 0
+    metrics = json.loads(metrics_path.read_text())
+    return len(metrics.get("history", []))
+
+
+def read_existing_summary(output_dir: Path) -> dict[str, dict[str, Any]]:
+    summary_path = output_dir / "sweep_results.csv"
+    if not summary_path.exists():
+        return {}
+    with summary_path.open(newline="") as handle:
+        return {row["trial"]: row for row in csv.DictReader(handle)}
+
+
+def metrics_path_for_trial(output_dir: Path, trial: dict[str, Any]) -> Path | None:
+    trial_dir = output_dir / trial["name"]
+    final_metrics = trial_dir / "metrics.json"
+    if final_metrics.exists():
+        return final_metrics
+
+    partial_metrics = trial_dir / "metrics_partial.json"
+    if partial_metrics.exists():
+        metrics = json.loads(partial_metrics.read_text())
+        if metrics.get("history"):
+            return partial_metrics
+    return None
+
+
 def row_for_trial(output_dir: Path, trial: dict[str, Any]) -> dict[str, Any] | None:
-    metrics_path = output_dir / trial["name"] / "metrics.json"
-    if not metrics_path.exists():
-        return None
+    metrics_path = metrics_path_for_trial(output_dir, trial)
+    if metrics_path is None:
+        summary_row = read_existing_summary(output_dir).get(trial["name"])
+        checkpoint_exists = any(
+            (output_dir / trial["name"] / name).exists()
+            for name in ("best.safetensors", "latest.safetensors")
+        )
+        if not summary_row or not checkpoint_exists:
+            return None
+        return {
+            "trial": trial["name"],
+            "best_val_low_snr_accuracy": float(summary_row["best_val_low_snr_accuracy"]),
+            "best_val_accuracy": float(summary_row["best_val_accuracy"]),
+            "best_epoch": int(summary_row["best_epoch"]),
+            "metrics_file": summary_row.get("metrics_file", "sweep_results.csv"),
+            **{key: value for key, value in trial.items() if key != "name"},
+        }
     low_snr, val_acc, best_epoch = read_score(metrics_path)
     return {
         "trial": trial["name"],
         "best_val_low_snr_accuracy": low_snr,
         "best_val_accuracy": val_acc,
         "best_epoch": best_epoch,
+        "metrics_file": str(metrics_path),
         **{key: value for key, value in trial.items() if key != "name"},
     }
 
@@ -140,8 +185,13 @@ def main() -> None:
     selected = [trial for trial in TRIALS if args.trial is None or trial["name"] in args.trial]
     for trial in selected:
         trial_dir = args.output_dir / trial["name"]
-        if args.skip_completed and (trial_dir / "metrics.json").exists():
-            print(f"\n=== trial: {trial['name']} already complete; skipping ===", flush=True)
+        existing_row = row_for_trial(args.output_dir, trial)
+        completed_epochs = completed_epochs_for_trial(args.output_dir, trial)
+        if args.skip_completed and existing_row is not None and completed_epochs >= args.epochs:
+            print(
+                f"\n=== trial: {trial['name']} already has {completed_epochs}/{args.epochs} epochs; skipping ===",
+                flush=True,
+            )
             continue
         cmd = [
             sys.executable,
@@ -161,6 +211,7 @@ def main() -> None:
             "--seed",
             str(args.seed),
             "--skip-test",
+            "--resume",
         ]
         if args.max_train is not None:
             cmd.extend(["--max-train", str(args.max_train)])

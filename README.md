@@ -117,7 +117,9 @@ to keep many gigabytes of I/Q samples in memory.
 ## Validation Sweep
 
 Use the validation set to tune hyperparameters without repeatedly scoring the
-test set. You can run one trial at a time across multiple days:
+test set. The sweep is resumable: it runs all trials that do not already have
+saved metrics, skips trials that already reached the requested epoch count, and
+resumes partial trials from `latest.safetensors`.
 
 ```bash
 python scripts/sweep_fourier_amc_mlx.py \
@@ -129,14 +131,13 @@ python scripts/sweep_fourier_amc_mlx.py \
   --max-val 20480 \
   --cache-data ram \
   --skip-completed \
-  --trial baseline \
   --output-dir runs/fourier_complex_mlx/sweep
 ```
 
 Available trial names are `baseline`, `small`, `low_snr_weighted`,
-`center_bins_512`, and `wider`. Re-run the command with a different `--trial`
-when you have time. To rebuild the summary from already completed trial
-folders, run:
+`center_bins_512`, and `wider`. To run only one trial manually, add
+`--trial <name>`. To rebuild the summary from already completed trial folders,
+run:
 
 ```bash
 python scripts/sweep_fourier_amc_mlx.py \
@@ -154,6 +155,27 @@ The sweep ranks trials by validation accuracy over `-20..0 dB` and writes:
 After choosing a config, run one final training job in
 `runs/fourier_complex_mlx/final_report` with `--train-metrics full` and without
 `--skip-test`, then report the final test numbers from that run.
+
+For a more meaningful but still resumable comparison, run the same sweep for
+5 epochs in a separate folder:
+
+```bash
+python scripts/sweep_fourier_amc_mlx.py \
+  --data /path/to/GOLD_XYZ_OSC.0001_1024.hdf5 \
+  --epochs 5 \
+  --batch-size 512 \
+  --device auto \
+  --max-train 102400 \
+  --max-val 20480 \
+  --cache-data ram \
+  --skip-completed \
+  --output-dir runs/fourier_complex_mlx/sweep_5epoch
+```
+
+Keep `sweep` and `sweep_5epoch` separate so 1-epoch screening results are not
+mixed with longer validation results. If a 5-epoch trial is interrupted after
+one or more completed epochs, rerunning the same command resumes that trial from
+its latest checkpoint.
 
 ## Current Progress and Plan
 

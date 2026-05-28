@@ -62,6 +62,7 @@ def parse_args() -> argparse.Namespace:
         default="none",
         help="Cache selected train/val/test arrays in RAM after one HDF5 read.",
     )
+    parser.add_argument("--resume", action="store_true", help="Resume from latest.safetensors and metrics_partial.json/metrics.json when available.")
     return parser.parse_args()
 
 
@@ -149,6 +150,20 @@ def args_ready(args: argparse.Namespace) -> dict[str, Any]:
 def save_json(path: Path, payload: dict[str, Any]) -> None:
     with path.open("w") as handle:
         json.dump(payload, handle, indent=2)
+
+
+def load_run_state(output_dir: Path) -> dict[str, Any] | None:
+    metrics_path = output_dir / "metrics_partial.json"
+    if not metrics_path.exists():
+        metrics_path = output_dir / "metrics.json"
+    if not metrics_path.exists():
+        return None
+    with metrics_path.open() as handle:
+        metrics = json.load(handle)
+    history = metrics.get("history", [])
+    if not history:
+        return None
+    return metrics
 
 
 def array_size_gib(x: np.ndarray, y: np.ndarray, snr: np.ndarray) -> float:
@@ -325,9 +340,26 @@ def main() -> None:
     best_path = args.output_dir / "best.safetensors"
     latest_path = args.output_dir / "latest.safetensors"
     partial_metrics_path = args.output_dir / "metrics_partial.json"
+    start_epoch = 1
+
+    if args.resume:
+        state = load_run_state(args.output_dir)
+        if state is not None and latest_path.exists():
+            model.load_weights(str(latest_path))
+            history = state.get("history", [])
+            best_val = float(state.get("best_val_low_snr_accuracy", -1.0))
+            best_epoch = int(state.get("best_epoch", 0))
+            start_epoch = len(history) + 1
+            print(
+                f"Resuming {args.output_dir} from epoch {start_epoch} "
+                f"(completed {len(history)} / requested {args.epochs}).",
+                flush=True,
+            )
+        elif args.resume:
+            print("Resume requested, but no usable latest checkpoint/history was found; starting fresh.", flush=True)
 
     try:
-        for epoch in range(1, args.epochs + 1):
+        for epoch in range(start_epoch, args.epochs + 1):
             train_metrics = run_epoch(
                 "train",
                 split.train,
